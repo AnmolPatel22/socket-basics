@@ -9,35 +9,50 @@ app.use(express.static(__dirname + '/public'));
 
 var clientInfo = {};
 
-io.on('connection',function(socket){
+io.on('connection', function (socket) {
     console.log('User connected via socket.oi!');
 
-    socket.on('joinRoom',function(req){
+    socket.on('joinRoom', function (req) {
         clientInfo[socket.id] = req;
         socket.join(req.room);
-        socket.broadcast.to(req.room).emit('message',{
+        socket.broadcast.to(req.room).emit('message', {
             name: 'System',
             text: req.name + ' has joined!',
             timestamp: moment().valueOf()
         });
     });
 
-    socket.on('message',function(message){
+    socket.on('disconnect', function () {
+        if (typeof clientInfo[socket.id] !== 'undefined') {
+            console.log("Disconnect called");
+
+            socket.leave(clientInfo[socket.id].room);
+            io.to(clientInfo[socket.id].room).emit('message', {
+                name: 'System',
+                text: clientInfo[socket.id].name + ' has left!',
+                timestamp: moment().valueOf()
+            });
+
+            delete clientInfo[socket.id];
+        }
+    });
+    socket.on('message', function (message) {
         console.log('Message recived:' + message.text);
-    
+
         message.timestamp = moment().valueOf();
         //socket.broadcast.emit('message',message);
-        io.to(clientInfo[socket.id].room).emit('message',message);
+        io.to(clientInfo[socket.id].room).emit('message', message);
+
     })
 
 
-    socket.emit('message',{
+    socket.emit('message', {
         name: 'System',
         text: 'Welcome to the chat application !!',
-        timestamp : moment().valueOf()
+        timestamp: moment().valueOf()
     });
 });
 
-http.listen(PORT, function(){
+http.listen(PORT, function () {
     console.log('Server Started');
 });
